@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<!--
+  SPA shell for the web build (expo export -p web, web.output = "single").
+
+  Expo picks this file up instead of its default template - see
+  @expo/cli/build/src/start/server/webTemplate.js - fills in the lang and title
+  placeholders, and appends the bundle script tag at the end of the document.
+  Native builds ignore this file entirely.
+
+  NOTE: those substitutions replace the FIRST match in the file, so this comment
+  deliberately contains neither placeholder token nor a closing body tag.
+
+  Everything below is a browser-only concern the React tree cannot reach:
+  first-paint background (JS has not run yet), the browser chrome colour, the
+  keyboard focus ring, and safe-area support on notched phone browsers.
+
+  COLOURS HERE MIRROR src/theme/colors.ts. `npm run check:contrast` asserts
+  they still match, so this cannot silently drift.
+-->
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- viewport-fit=cover is what makes env(safe-area-inset-*) non-zero, which
+         is how react-native-safe-area-context gets real insets on iOS Safari. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
+    />
+    <title>%WEB_TITLE%</title>
+
+    <!-- Two theme-colors so browser chrome follows the OS scheme. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FBFAF7" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#100E0D" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="SnapCampus — find and book campus photographers for graduation portraits, events and headshots."
+    />
+
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+
+    <style id="snapcampus-shell">
+      /* Painted before any JS runs — without this a dark-mode user gets a
+         white flash on every hard reload. */
+      html,
+      body {
+        background-color: #fbfaf7;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      ::selection {
+        background: #fcebe6;
+      }
+      /* The app removes the default outline on inputs, so restore a visible
+         ring for keyboard users. */
+      :focus-visible {
+        outline: 2px solid #0b63ce;
+        outline-offset: 2px;
+      }
+      @media (prefers-color-scheme: dark) {
+        html,
+        body {
+          background-color: #100e0d;
+        }
+        ::selection {
+          background: #331b15;
+        }
+        :focus-visible {
+          outline-color: #7fb2ff;
+        }
+      }
+      /* Belt-and-braces for reduce-motion: the app already disables its own
+         animations, this covers anything the browser drives. */
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>You need to enable JavaScript to run SnapCampus.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "SnapCampus",
+    "slug": "snapcampus",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "snapcampus",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#FBFAF7",
+      "dark": {
+        "image": "./assets/splash.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#100E0D"
+      }
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.snapcampus.mobile",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "SnapCampus needs access to your photos so you can upload portfolio images and a profile picture.",
+        "NSCameraUsageDescription": "SnapCampus uses the camera to capture a profile picture.",
+        "NSLocationWhenInUseUsageDescription": "SnapCampus uses your location to show photographers near you."
+      }
+    },
+    "android": {
+      "package": "app.snapcampus.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0E0E10"
+      },
+      "softwareKeyboardLayoutMode": "resize"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        { "photosPermission": "Allow SnapCampus to access your photos to upload portfolio images." }
+      ],
+      [
+        "expo-notifications",
+        { "color": "#FF5A36" }
+      ],
+      [
+        "expo-location",
+        { "locationWhenInUsePermission": "SnapCampus uses your location to show photographers near you." }
+      ]
+    ],
+    "owner": "snapcampus",
+    "extra": {
+      "apiUrl": "http://localhost:4000",
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to the same branch makes the in-flight run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  api:
+    name: API (lint, typecheck, test, build)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: snapcampus
+          POSTGRES_PASSWORD: snapcampus
+          POSTGRES_DB: snapcampus_test
+        ports:
+          - 5432:5432
+        # Steps must not start before the database can actually accept queries.
+        options: >-
+          --health-cmd "pg_isready -U snapcampus"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Overrides apps/api/.env.test, which dotenv will not apply on top of an
+      # already-exported variable.
+      DATABASE_URL: postgresql://snapcampus:snapcampus@localhost:5432/snapcampus_test?schema=public
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate --workspace @snapcampus/api
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test (real Postgres, migrations applied by globalSetup)
+        run: npm run test:cov
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-coverage
+          path: apps/api/coverage
+          if-no-files-found: ignore
+
+  audit:
+    name: Dependency audit (production deps)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # Advisory-only: the Expo/Metro toolchain drags in dev-time findings that
+      # can't be fixed without a major upgrade, so this reports without blocking.
+      - name: npm audit
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high

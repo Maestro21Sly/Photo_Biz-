@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+apps/mobile
+legacy-pwa
+**/dist
+**/.expo
+**/uploads
+.git
+.github
+*.log
+.env
+**/.env
+# Test-only config and suites: never needed to build the image, and .env.test
+# should not travel into a production build context.
+**/.env.test
+**/tests
+**/coverage

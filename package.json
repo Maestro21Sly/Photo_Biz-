@@ -1,0 +1,26 @@
+{
+  "name": "snapcampus",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SnapCampus — campus photography marketplace (Expo app + Node/Postgres API).",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "api": "npm run dev --workspace @snapcampus/api",
+    "mobile": "npm run start --workspace @snapcampus/mobile",
+    "lint": "npm run lint --workspace @snapcampus/api",
+    "typecheck": "npm run typecheck --workspace @snapcampus/api",
+    "test": "npm run test --workspace @snapcampus/api",
+    "test:cov": "npm run test:cov --workspace @snapcampus/api",
+    "build": "npm run build --workspace @snapcampus/api",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run prisma:migrate --workspace @snapcampus/api",
+    "db:seed": "npm run prisma:seed --workspace @snapcampus/api",
+    "db:studio": "npm run prisma:studio --workspace @snapcampus/api"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

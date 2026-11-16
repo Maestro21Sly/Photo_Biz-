@@ -1,0 +1,344 @@
+// SnapCampus data model — campus photography marketplace.
+// Covers accounts, photographer profiles, portfolio media, search, bookings,
+// in-app chat, reviews + verification, favorites, push notifications, and a
+// payment-ready table (monetization is deferred but the schema is ready).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  PHOTOGRAPHER
+  ADMIN
+}
+
+enum PricingModel {
+  HOURLY
+  PACKAGE
+  CUSTOM
+}
+
+enum BookingStatus {
+  REQUESTED
+  ACCEPTED
+  DECLINED
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationType {
+  BOOKING_REQUESTED
+  BOOKING_ACCEPTED
+  BOOKING_DECLINED
+  BOOKING_CANCELLED
+  BOOKING_COMPLETED
+  NEW_MESSAGE
+  NEW_REVIEW
+  SYSTEM
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  REFUNDED
+  FAILED
+}
+
+enum VerificationStatus {
+  NONE
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ReportReason {
+  HARASSMENT
+  SPAM
+  INAPPROPRIATE
+  SCAM
+  SAFETY
+  OTHER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(STUDENT)
+  displayName  String
+  avatarUrl    String?
+  phone        String?
+  pushToken    String?
+  emailVerified Boolean @default(false)
+  acceptedTermsAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  photographerProfile PhotographerProfile?
+  refreshTokens       RefreshToken[]
+  passwordResets      PasswordResetToken[]
+  favorites           Favorite[]
+  notifications       Notification[]
+  clientBookings      Booking[]            @relation("ClientBookings")
+  authoredReviews     Review[]             @relation("AuthoredReviews")
+  sentMessages        Message[]            @relation("SentMessages")
+  threadsAsClient     Thread[]             @relation("ThreadClient")
+  reportsMade         Report[]             @relation("Reporter")
+  reportsAgainst      Report[]             @relation("ReportedUser")
+  blocksMade          Block[]              @relation("Blocker")
+  blockedBy           Block[]              @relation("Blocked")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tokenHash String   @unique
+  purpose   String   @default("RESET") // RESET | VERIFY
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Report {
+  id             String       @id @default(cuid())
+  reporter       User         @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reporterId     String
+  targetUser     User         @relation("ReportedUser", fields: [targetUserId], references: [id], onDelete: Cascade)
+  targetUserId   String
+  reason         ReportReason
+  note           String       @default("")
+  threadId       String?
+  resolved       Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([targetUserId])
+}
+
+model Block {
+  id             String   @id @default(cuid())
+  blocker        User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockerId      String
+  blocked        User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  blockedId      String
+  createdAt      DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tokenHash String   @unique
+  // Rotation lineage. Every token descended from one login shares a familyId,
+  // so replaying an already-rotated token (the classic sign of a stolen token)
+  // can revoke the entire chain instead of just failing the one request.
+  familyId  String
+  revokedAt DateTime?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+model PhotographerProfile {
+  id            String       @id @default(cuid())
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String       @unique
+  campus        String
+  headline      String       @default("")
+  bio           String       @default("")
+  responseTime  String       @default("Usually replies within a day")
+
+  pricingModel  PricingModel @default(CUSTOM)
+  priceLabel    String       @default("Contact for pricing")
+  hourlyRate    Int?
+  minimumHours  Int?
+  startingAt    Int?
+  negotiable    Boolean      @default(false)
+  pricingNotes  String       @default("")
+
+  instagram     String?
+  portfolioUrl  String?
+
+  // Base / service location (pinned on a map by the photographer).
+  latitude      Float?
+  longitude     Float?
+
+  isVerified         Boolean            @default(false)
+  verificationStatus VerificationStatus @default(NONE)
+  isPublished        Boolean            @default(true)
+  ratingAvg     Float        @default(0)
+  ratingCount   Int          @default(0)
+  completedJobs Int          @default(0)
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  specialties   PhotographerSpecialty[]
+  media         PortfolioMedia[]
+  bookings      Booking[]               @relation("PhotographerBookings")
+  reviews       Review[]                @relation("PhotographerReviews")
+  favoritedBy   Favorite[]
+  threads       Thread[]                @relation("ThreadPhotographer")
+
+  @@index([campus])
+  @@index([ratingAvg])
+}
+
+model Specialty {
+  id            String                  @id @default(cuid())
+  name          String                  @unique
+  photographers PhotographerSpecialty[]
+}
+
+model PhotographerSpecialty {
+  photographer   PhotographerProfile @relation(fields: [photographerId], references: [id], onDelete: Cascade)
+  photographerId String
+  specialty      Specialty           @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+  specialtyId    String
+
+  @@id([photographerId, specialtyId])
+}
+
+model PortfolioMedia {
+  id             String              @id @default(cuid())
+  photographer   PhotographerProfile @relation(fields: [photographerId], references: [id], onDelete: Cascade)
+  photographerId String
+  url            String
+  thumbnailUrl   String?
+  caption        String              @default("")
+  width          Int?
+  height         Int?
+  position       Int                 @default(0)
+  createdAt      DateTime            @default(now())
+
+  @@index([photographerId])
+}
+
+model Booking {
+  id             String              @id @default(cuid())
+  client         User                @relation("ClientBookings", fields: [clientId], references: [id], onDelete: Cascade)
+  clientId       String
+  photographer   PhotographerProfile @relation("PhotographerBookings", fields: [photographerId], references: [id], onDelete: Cascade)
+  photographerId String
+
+  status         BookingStatus       @default(REQUESTED)
+  eventType      String
+  eventDate      DateTime
+  location       String
+  latitude       Float?
+  longitude      Float?
+  durationHours  Int?
+  message        String              @default("")
+  quotedPrice    Int?
+
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  review         Review?
+  payment        Payment?
+  thread         Thread?
+
+  @@index([clientId])
+  @@index([photographerId])
+  @@index([status])
+}
+
+model Thread {
+  id             String               @id @default(cuid())
+  client         User                 @relation("ThreadClient", fields: [clientId], references: [id], onDelete: Cascade)
+  clientId       String
+  photographer   PhotographerProfile  @relation("ThreadPhotographer", fields: [photographerId], references: [id], onDelete: Cascade)
+  photographerId String
+  booking        Booking?             @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId      String?              @unique
+  lastMessageAt  DateTime             @default(now())
+  createdAt      DateTime             @default(now())
+
+  messages       Message[]
+
+  @@unique([clientId, photographerId])
+  @@index([clientId])
+  @@index([photographerId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  threadId  String
+  sender    User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId  String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([threadId])
+}
+
+model Review {
+  id             String              @id @default(cuid())
+  booking        Booking?            @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId      String?             @unique
+  author         User                @relation("AuthoredReviews", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId       String
+  photographer   PhotographerProfile @relation("PhotographerReviews", fields: [photographerId], references: [id], onDelete: Cascade)
+  photographerId String
+  rating         Int
+  body           String              @default("")
+  createdAt      DateTime            @default(now())
+
+  @@index([photographerId])
+}
+
+model Favorite {
+  id             String              @id @default(cuid())
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  photographer   PhotographerProfile @relation(fields: [photographerId], references: [id], onDelete: Cascade)
+  photographerId String
+  createdAt      DateTime            @default(now())
+
+  @@unique([userId, photographerId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  type      NotificationType
+  title     String
+  body      String           @default("")
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+}
+
+// Payment-ready, but unused in V1 (monetization deferred).
+model Payment {
+  id        String        @id @default(cuid())
+  booking   Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId String        @unique
+  amount    Int
+  currency  String        @default("usd")
+  status    PaymentStatus @default(PENDING)
+  provider  String        @default("stripe")
+  providerRef String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}

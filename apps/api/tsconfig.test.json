@@ -1,0 +1,17 @@
+{
+  // Tests compile to CommonJS: ts-jest's ESM mode still needs
+  // --experimental-vm-modules and interacts badly with the CJS-only deps in this
+  // tree, so the transform emits CJS and jest.config.cjs strips the ".js"
+  // specifiers the runtime build needs. Production output is unaffected.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "noEmit": true,
+    "isolatedModules": true,
+    "rootDir": ".",
+    "types": ["node", "jest"]
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
